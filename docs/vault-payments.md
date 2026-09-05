@@ -184,13 +184,21 @@ A reusable card remaining `ready` does not establish that the last payment succe
 
 ## Observation, updates, and safety
 
-- Single-item responses are JSON text containing `{item, guidance}`. They preserve
+- Single-item responses are JSON text containing `{item, hints, guidance}`. They preserve
   public state, non-secret aliases, masks, safe action/approval URLs, advertised
   operations/expansions, and payment outcomes. Unknown provider fields, opaque
   event data, free-form metadata, and URLs carrying OAuth codes/tokens are omitted.
   API errors retain the HTTP status but use curated messages for recognized error
   codes. Unknown codes use a generic fallback; upstream error text is never returned.
   There is no raw-output or raw-card tool.
+- `hints.observation` contains `{tool, arguments}` entries for non-blocking `get`
+  and `events` calls. `hints.invocation` contains only currently advertised
+  operations, each with `requires_user_approval: true`. Hints preserve the resolved
+  project selector (when present), vault, and item key. Pass `tool` as the MCP
+  call's `name` and `arguments` unchanged. Provider-hosted actions remain separate
+  in `item.action` and approval URLs; they are not callable operation hints.
+  **A hint is not user approval or a recommendation to retry a payment.**
+  Availability can change; `invoke` still fetches the item and rechecks it.
 - Vault lists return `{items, has_more, next_offset}`. Item lists return `{items}`.
   `get` with `expand: ["payment_methods"]` is equivalent to the wallet
   `payment_methods` action. An unavailable expansion returns an API error.
@@ -199,9 +207,11 @@ A reusable card remaining `ready` does not establish that the last payment succe
   not a background polling loop or readiness guarantee. The SDK timeout is the
   wait plus 30 seconds; configure the MCP client's timeout accordingly, or use
   shorter waits. Request cancellation is propagated to the SDK.
-- `events` accepts `after` and returns `{events, next_after, guidance}`. Pass
-  `next_after` on the next call for the same vault/key. An empty result preserves
-  the input cursor (or returns `null` without one).
+- `events` accepts `after` and returns `{events, next_after, hints, guidance}`.
+  Its observation hints include the next events cursor, preserving the input
+  cursor on an empty result (or omitting `after` when there is no cursor).
+  Event responses do not include invocation hints because they do not establish
+  current operation availability.
 - **Ready does not mean paid.** Inspect state and immutable events for outcomes.
   No vault request is automatically retried. After a failed, timed-out, rejected,
   or indeterminate payment, inspect state/events; do not replay checkout, invoke

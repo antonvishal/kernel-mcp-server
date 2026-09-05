@@ -128,13 +128,61 @@ export function projectVaultOutput(
   return result;
 }
 
-export function vaultItemResponse(item: unknown) {
+type VaultItemTarget = {
+  project?: string;
+  vault: string;
+  key: string;
+};
+
+const advertisedOperationsSchema = z.object({
+  available_operations: z.array(
+    z.object({
+      type: z
+        .string()
+        .min(1)
+        .refine((value) => value.trim().length > 0),
+    }),
+  ),
+});
+
+export function vaultObservationHints(target: VaultItemTarget, after?: string) {
+  return [
+    {
+      tool: "manage_vault_items",
+      arguments: { ...target, action: "get", wait: 0 },
+    },
+    {
+      tool: "manage_vault_items",
+      arguments: {
+        ...target,
+        action: "events",
+        wait: 0,
+        ...(after !== undefined && { after }),
+      },
+    },
+  ];
+}
+
+export function vaultItemResponse(item: unknown, target: VaultItemTarget) {
+  const projected = projectVaultOutput(item, vaultItemFields);
+  const advertised = advertisedOperationsSchema.safeParse(projected);
   return jsonResponse({
-    item: projectVaultOutput(item, vaultItemFields),
+    item: projected,
+    hints: {
+      observation: vaultObservationHints(target),
+      invocation: advertised.success
+        ? advertised.data.available_operations.map(({ type }) => ({
+            tool: "manage_vault_items",
+            arguments: { ...target, action: "invoke", operation: type },
+            requires_user_approval: true,
+          }))
+        : [],
+    },
     guidance: [
       "Ask the user to complete returned provider actions; never send card data or OAuth codes/tokens to MCP. Read operation descriptions and obtain explicit user approval before invoking.",
       "Use returned aliases only in a new browser created with this vault attached, respecting returned permitted domains. Ready does not mean paid.",
       "Observe get/events for outcomes. Do not retry failed, timed-out, rejected, or indeterminate payments or reconfigure a card to retry them.",
+      "Invocation hints are not approval to execute. Availability may change; invoke rechecks the advertised operations.",
     ],
   });
 }

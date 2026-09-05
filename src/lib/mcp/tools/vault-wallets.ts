@@ -43,9 +43,11 @@ export function registerVaultWalletTools(
     },
     async (params, extra) => {
       if (!extra.authInfo) throw new Error("Authentication required");
+      const project = projectForOperation(extra.authInfo, params);
+      const target = { project, vault: params.vault, key: params.key };
       const client = dependencies.createKernelClient(
         extra.authInfo.token,
-        projectForOperation(extra.authInfo, params),
+        project,
       );
       const options = { maxRetries: 0, signal: extra.signal };
       try {
@@ -74,7 +76,7 @@ export function registerVaultWalletTools(
               },
               options,
             );
-            return vaultItemResponse(item);
+            return vaultItemResponse(item, target);
           }
           case "payment_methods": {
             const item = await client.vaults.items.retrieve(
@@ -85,7 +87,7 @@ export function registerVaultWalletTools(
               },
               { ...longOperationOptions(0), signal: extra.signal },
             );
-            return vaultItemResponse(item);
+            return vaultItemResponse(item, target);
           }
         }
       } catch (error) {

@@ -38,9 +38,11 @@ export function registerVaultCardTools(
     },
     async (params, extra) => {
       if (!extra.authInfo) throw new Error("Authentication required");
+      const project = projectForOperation(extra.authInfo, params);
+      const target = { project, vault: params.vault, key: params.key };
       const client = dependencies.createKernelClient(
         extra.authInfo.token,
-        projectForOperation(extra.authInfo, params),
+        project,
       );
       const options = { maxRetries: 0, signal: extra.signal };
       try {
@@ -66,7 +68,7 @@ export function registerVaultCardTools(
                 { id_or_name: params.vault, spec },
                 options,
               );
-        return vaultItemResponse(item);
+        return vaultItemResponse(item, target);
       } catch (error) {
         throwVaultError("manage_vault_cards", params.action, error);
       }

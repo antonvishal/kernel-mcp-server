@@ -11,6 +11,7 @@ import {
   vaultEventFields,
   vaultItemFields,
   vaultItemResponse,
+  vaultObservationHints,
 } from "@/lib/mcp/vault-responses";
 import {
   vaultItemSchema,
@@ -63,9 +64,10 @@ export function registerVaultItemTools(
     },
     async (params, extra) => {
       if (!extra.authInfo) throw new Error("Authentication required");
+      const project = projectForOperation(extra.authInfo, params);
       const client = dependencies.createKernelClient(
         extra.authInfo.token,
-        projectForOperation(extra.authInfo, params),
+        project,
       );
       const options = { maxRetries: 0, signal: extra.signal };
       try {
@@ -86,6 +88,7 @@ export function registerVaultItemTools(
         }
         if (!params.key)
           return errorResponse("key is required except for list.");
+        const target = { project, vault: params.vault, key: params.key };
         switch (params.action) {
           case "get": {
             const item = await client.vaults.items.retrieve(
@@ -100,7 +103,7 @@ export function registerVaultItemTools(
                 signal: extra.signal,
               },
             );
-            return vaultItemResponse(item);
+            return vaultItemResponse(item, target);
           }
           case "invoke": {
             if (!params.operation)
@@ -125,7 +128,7 @@ export function registerVaultItemTools(
               },
               options,
             );
-            return vaultItemResponse(updated);
+            return vaultItemResponse(updated, target);
           }
           case "events": {
             const events = await client.vaults.items.events(
@@ -144,9 +147,11 @@ export function registerVaultItemTools(
             if (lastEventID !== undefined && typeof lastEventID !== "string") {
               throw new Error("Invalid vault event cursor");
             }
+            const nextAfter = lastEventID ?? params.after;
             return jsonResponse({
               events: projectVaultOutput(events, vaultEventFields),
-              next_after: lastEventID ?? params.after ?? null,
+              next_after: nextAfter ?? null,
+              hints: { observation: vaultObservationHints(target, nextAfter) },
               guidance:
                 "Observing events never retries a payment. Do not retry failed, timed-out, rejected, or indeterminate payments.",
             });

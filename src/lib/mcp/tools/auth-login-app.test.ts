@@ -152,6 +152,10 @@ describe("managed-auth MCP App registration", () => {
       expect(schema.safeParse({ ...base, proxy_id: "proxy_1" }).success).toBe(
         true,
       );
+      expect(schema.safeParse({ ...base, region: "eu-west" }).success).toBe(
+        true,
+      );
+      expect(schema.safeParse({ ...base, region: "emea" }).success).toBe(false);
       const defaults = schema.parse(base);
       expect(defaults.record_session).toBe(true);
       expect(defaults.browser_telemetry).toEqual({ enabled: true });
@@ -521,6 +525,7 @@ describe("managed-auth MCP App registration", () => {
     expect(MANAGED_AUTH_APP_HTML).toContain("profile_name");
     expect(MANAGED_AUTH_APP_HTML).toContain("record_session");
     expect(MANAGED_AUTH_APP_HTML).toContain("browser_telemetry");
+    expect(MANAGED_AUTH_APP_HTML).toContain("region");
     expect(MANAGED_AUTH_APP_HTML).toContain("manage_auth_connections");
     expect(MANAGED_AUTH_APP_HTML).not.toContain("flow_wait_started_at");
     expect(MANAGED_AUTH_APP_HTML).toContain(

@@ -71,6 +71,12 @@ const authLoginInputSchema = () => ({
       "Browser telemetry for this managed-auth flow and the connection default for new connections. Defaults to { enabled: true }, which captures the operational categories (control, connection, system, captcha).",
     )
     .default({ enabled: true }),
+  region: z
+    .enum(["us-east", "eu-west", "ap-southeast"])
+    .describe(
+      "Region for the managed-auth browser session. Sets the connection default for a new login or overrides it for this reauth.",
+    )
+    .optional(),
   proxy_id: z.string().min(1).optional(),
   proxy_name: z.string().min(1).optional(),
 });
@@ -104,6 +110,7 @@ function inputFromParams(params: AuthLoginParams): AuthLoginInput {
     }),
     record_session: params.record_session ?? true,
     browser_telemetry: params.browser_telemetry ?? { enabled: true },
+    ...(params.region && { region: params.region }),
     ...(params.proxy_id && { proxy_id: params.proxy_id }),
     ...(params.proxy_name && { proxy_name: params.proxy_name }),
   };

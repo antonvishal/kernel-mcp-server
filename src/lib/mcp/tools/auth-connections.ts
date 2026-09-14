@@ -143,6 +143,12 @@ export function registerAuthConnectionTools(server: McpServer) {
           "(create, update) Set the connection default for browser telemetry. (login) Override it for this login only. Use { enabled: true } for the default operational categories (control, connection, system, captcha); browser category settings can opt into console, network, page, interaction, screenshot, or platform capture, tune control CDP exclusions, and configure OTLP export. Omitted preserves the API default or inherited value.",
         )
         .optional(),
+      browser_region: z
+        .enum(["us-east", "eu-west", "ap-southeast"])
+        .describe(
+          "(create, update) Set the region for future managed-auth browser sessions. (login) Override the region for this login only. Defaults to us-east on create; omitted on update or login preserves or inherits the connection setting.",
+        )
+        .optional(),
       browser_stealth: z
         .boolean()
         .describe(
@@ -278,10 +284,14 @@ export function registerAuthConnectionTools(server: McpServer) {
           : undefined;
       const buildBrowser = () => {
         const proxy = buildProxy();
-        return params.browser_stealth !== undefined ||
+        return params.browser_region !== undefined ||
+          params.browser_stealth !== undefined ||
           params.browser_telemetry !== undefined ||
           proxy
           ? {
+              ...(params.browser_region !== undefined && {
+                region: params.browser_region,
+              }),
               ...(params.browser_stealth !== undefined && {
                 stealth: params.browser_stealth,
               }),

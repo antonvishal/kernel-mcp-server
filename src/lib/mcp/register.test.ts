@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { instrumentMcpAnalytics } from "@/lib/mcp/analytics";
 import { registerMcpCapabilities } from "@/lib/mcp/register";
+import { KERNEL_MCP_TOOL_NAMES } from "@/lib/mcp/tool-names";
 
 const NON_AUTH_TOOLSETS = [
   "profiles",
@@ -23,7 +25,11 @@ const NON_AUTH_TOOLSETS = [
   "vaults",
 ].join(",");
 
-function captureRegistration(mcpApps: boolean, vaults = false) {
+function captureRegistration(
+  mcpApps: boolean,
+  vaults = false,
+  analytics = false,
+) {
   const legacyTools: string[] = [];
   const appTools: string[] = [];
   const resources: string[] = [];
@@ -49,8 +55,27 @@ function captureRegistration(mcpApps: boolean, vaults = false) {
     },
   } as unknown as McpServer;
   registerMcpCapabilities(server, { mcpApps, vaults });
+  if (analytics) instrumentMcpAnalytics(server, null);
   return { legacyTools, appTools, resources, schemas };
 }
+
+describe("MCP tool ownership", () => {
+  test("matches every registered KERNEL tool in both directions", () => {
+    const registration = captureRegistration(true, true, true);
+    const registeredTools = new Set([
+      ...registration.legacyTools,
+      ...registration.appTools,
+    ]);
+    const knownTools = new Set<string>(KERNEL_MCP_TOOL_NAMES);
+
+    expect(
+      [...registeredTools].filter((tool) => !knownTools.has(tool)),
+    ).toEqual([]);
+    expect(
+      [...knownTools].filter((tool) => !registeredTools.has(tool)),
+    ).toEqual([]);
+  });
+});
 
 describe("MCP Apps additive registration", () => {
   test("keeps managed auth unchanged and only adds the App tools for capable clients", () => {

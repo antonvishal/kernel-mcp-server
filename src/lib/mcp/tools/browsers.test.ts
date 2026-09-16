@@ -434,10 +434,18 @@ describe("manage_browsers id or name", () => {
           session_id: "checkout-flow",
           name: "checkout-flow-2",
           tags: {},
+          start_url: "https://example.com/checkout",
         },
       });
       expect(updateCalls).toEqual([
-        ["checkout-flow", { name: "checkout-flow-2", tags: {} }],
+        [
+          "checkout-flow",
+          {
+            name: "checkout-flow-2",
+            tags: {},
+            start_url: "https://example.com/checkout",
+          },
+        ],
       ]);
 
       await client.callTool({

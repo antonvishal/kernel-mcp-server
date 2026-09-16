@@ -468,7 +468,7 @@ export function registerBrowserCapabilities(
         .string()
         .url()
         .describe(
-          "(create) URL to open when the browser is created. Navigation is best-effort.",
+          "(create) URL to open when the browser is created, or (update) URL to navigate to after applying the update. When a profile is loaded in the same update, this overrides the profile's restored tabs. Navigation is best-effort.",
         )
         .optional(),
       vaults: browserVaultsSchema,
